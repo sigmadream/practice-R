@@ -24,9 +24,6 @@ website:
       - section: "R"
         contents:
           - notes/r4ds_2nd.qmd
-      - section: "ggplot"
-        contents:
-          - notes/ggplot2.qmd
 
 bibliography: references.bib
 link-citations: true

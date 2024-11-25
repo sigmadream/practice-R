@@ -7,7 +7,11 @@ title: R for Data Science (2e)
 ```{r}
 library(ggplot2)
 library(ggthemes) 
-library(tidyverse) 
+library(tidyverse)
+library(scales)
+library(ggrepel)
+library(patchwork) 
+library(tidymodels)
 library(palmerpenguins)
 library(nycflights13)
 ```
@@ -861,11 +865,6 @@ flights |>
 > “Happy families are all alike; every unhappy family is unhappy in its own way.” — Leo Tolstoy,
 > “Tidy datasets are all alike, but every messy dataset is messy in its own way.” — Hadley Wickham
 
-```{r}
-library(tidyverse)
-library(ggthemes)
-```
-
 > One of them, table1, will be much easier to work with inside the tidyverse because it’s tidy.
 
 ```{r}
@@ -1171,9 +1170,6 @@ reprex::reprex(mtcars)
 
 > Spend a little bit of time ensuring that your code is easy for others to read: 1) Make sure you’ve used spaces and your variable names are concise yet informative. 2) Use comments to indicate where your problem lies. 3) Do your best to remove everything that is not related to the problem. 4) The shorter your code is, the easier it is to understand and the easier it is to fix.
 
-```{r}
-library(tidyverse)
-```
 
 ## 9. Layers
 
@@ -1330,9 +1326,7 @@ Search for answers by visualizing, transforming, and modelling your data. 3) Use
 
 > EDA is a state of mind.
 
-```{r}
-library(tidyverse)
-```
+
 
 ### Questions
 
@@ -1560,7 +1554,7 @@ ggplot(smaller, aes(x = carat, y = price)) +
 > Patterns in your data provide clues about relationships, i.e., they reveal covariation. If you think of variation as a phenomenon that creates uncertainty, covariation is a phenomenon that reduces it. If two variables covary, you can use the values of one variable to make better predictions about the values of the second. If the covariation is due to a causal relationship (a special case), then you can use the value of one variable to control the value of the second.
 
 ```{r}
-library(tidymodels)
+
 
 diamonds <- diamonds |>
   mutate(
@@ -1580,3 +1574,170 @@ ggplot(diamonds_aug, aes(x = carat, y = .resid)) +
 ggplot(diamonds_aug, aes(x = cut, y = .resid)) + 
   geom_boxplot()
 ```
+
+## 11. Communication
+
+> Now that you understand your data, you need to communicate your understanding to others. Your audience will likely not share your background knowledge and will not be deeply invested in the data. To help others quickly build up a good mental model of the data, you will need to invest considerable effort in making your plots as self-explanatory as possible. 
+
+### Label
+
+> The easiest place to start when turning an exploratory graphic into an expository graphic is with good labels. You add labels with the labs() function.
+
+> The purpose of a plot title is to summarize the main finding. Avoid titles that just describe what the plot is, e.g., “A scatterplot of engine displacement vs. fuel economy”.
+
+> If you need to add more text, there are two other useful labels: subtitle adds additional detail in a smaller font beneath the title and caption adds text at the bottom right of the plot, often used to describe the source of the data.
+
+```{r}
+ggplot(mpg, aes(x = displ, y = hwy)) +
+  geom_point(aes(color = class)) +
+  geom_smooth(se = FALSE) +
+  labs(
+    x = "Engine displacement (L)",
+    y = "Highway fuel economy (mpg)",
+    color = "Car type",
+    title = "Fuel efficiency generally decreases with engine size",
+    subtitle = "Two seaters (sports cars) are an exception because of their light weight",
+    caption = "Data from fueleconomy.gov"
+  )
+```
+
+#### 11.3.1(연습문제)
+
+### Annotations
+
+> You can also use the same idea to highlight certain points on a plot with geom_text_repel() from the ggrepel package. Note another handy technique used here: we added a second layer of large, hollow points to further highlight the labelled points.
+
+```{r}
+potential_outliers <- mpg |>
+  filter(hwy > 40 | (hwy > 20 & displ > 5))
+
+ggplot(mpg, aes(x = displ, y = hwy)) +
+  geom_point() +
+  geom_text_repel(data = potential_outliers, aes(label = model)) +
+  geom_point(data = potential_outliers, color = "red") +
+  geom_point(
+    data = potential_outliers,
+    color = "red", size = 3, shape = "circle open"
+  )
+```
+
+#### 11.3.1(연습문제)
+
+### Scales
+
+> [...] Scales control how the aesthetic mappings manifest visually.
+
+#### Default scales
+
+> The default scales have been carefully chosen to do a good job for a wide range of inputs. Nevertheless, you might want to override the defaults for two reasons: 1) You might want to tweak some of the parameters of the default scale. This allows you to do things like change the breaks on the axes, or the key labels on the legend. 2) You might want to replace the scale altogether, and use a completely different algorithm. Often you can do better than the default because you know more about the data.
+
+#### Axis ticks and legend keys
+
+> Collectively axes and legends are called guides. Axes are used for x and y aesthetics; legends are used for everything else.
+
+```{r}
+# Left
+ggplot(diamonds, aes(x = price, y = cut)) +
+  geom_boxplot(alpha = 0.05) +
+  scale_x_continuous(labels = label_dollar())
+
+# Right
+ggplot(diamonds, aes(x = price, y = cut)) +
+  geom_boxplot(alpha = 0.05) +
+  scale_x_continuous(
+    labels = label_dollar(scale = 1/1000, suffix = "K"), 
+    breaks = seq(1000, 19000, by = 6000)
+  )
+```
+
+#### Legend layout
+
+> You will most often use breaks and labels to tweak the axes. While they both also work for legends, there are a few other techniques you are more likely to use. To control the overall position of the legend, you need to use a theme() setting. We’ll come back to themes at the end of the chapter, but in brief, they control the non-data parts of the plot. The theme setting legend.position controls where the legend is drawn.
+
+#### Replacing a scale
+
+> Another scale that is frequently customized is color. The default categorical scale picks colors that are evenly spaced around the color wheel. Useful alternatives are the ColorBrewer scales which have been hand tuned to work better for people with common types of color blindness. The two plots below look similar, but there is enough difference in the shades of red and green that the dots on the right can be distinguished even by people with red-green color blindness.
+
+
+```{r}
+df <- tibble(
+  x = rnorm(10000),
+  y = rnorm(10000)
+)
+
+ggplot(df, aes(x, y)) +
+  geom_hex() +
+  coord_fixed() +
+  labs(title = "Default, continuous", x = NULL, y = NULL)
+
+ggplot(df, aes(x, y)) +
+  geom_hex() +
+  coord_fixed() +
+  scale_fill_viridis_c() +
+  labs(title = "Viridis, continuous", x = NULL, y = NULL)
+
+ggplot(df, aes(x, y)) +
+  geom_hex() +
+  coord_fixed() +
+  scale_fill_viridis_b() +
+  labs(title = "Viridis, binned", x = NULL, y = NULL)
+```
+
+#### Zooming
+
+> There are three ways to control the plot limits. 1)     Adjusting what data are plotted. 2) Setting the limits in each scale. 3) Setting xlim and ylim in coord_cartesian().
+
+#### 11.4.6(연습문제)
+
+### Themes
+
+> There are many other aspects of the legend that can be customized with theme(). For example, in the plot below we change the direction of the legend as well as put a black border around it.
+
+```{r}
+ggplot(mpg, aes(x = displ, y = hwy)) +
+  geom_point(aes(color = class)) +
+  geom_smooth(se = FALSE) +
+  theme_bw()
+```
+
+#### 11.5.1(연습문제)
+
+### Layout
+
+> You can also create complex plot layouts with patchwork. In the following, | places the p1 and p3 next to each other and / moves p2 to the next line.
+
+```{r}
+p1 <- ggplot(mpg, aes(x = drv, y = cty, color = drv)) + 
+  geom_boxplot(show.legend = FALSE) + 
+  labs(title = "Plot 1")
+
+p2 <- ggplot(mpg, aes(x = drv, y = hwy, color = drv)) + 
+  geom_boxplot(show.legend = FALSE) + 
+  labs(title = "Plot 2")
+
+p3 <- ggplot(mpg, aes(x = cty, color = drv, fill = drv)) + 
+  geom_density(alpha = 0.5) + 
+  labs(title = "Plot 3")
+
+p4 <- ggplot(mpg, aes(x = hwy, color = drv, fill = drv)) + 
+  geom_density(alpha = 0.5) + 
+  labs(title = "Plot 4")
+
+p5 <- ggplot(mpg, aes(x = cty, y = hwy, color = drv)) + 
+  geom_point(show.legend = FALSE) + 
+  facet_wrap(~drv) +
+  labs(title = "Plot 5")
+
+(guide_area() / (p1 + p2) / (p3 + p4) / p5) +
+  plot_annotation(
+    title = "City and highway mileage for cars with different drive trains",
+    caption = "Source: https://fueleconomy.gov."
+  ) +
+  plot_layout(
+    guides = "collect",
+    heights = c(1, 3, 2, 4)
+    ) &
+  theme(legend.position = "top")
+```
+
+#### 11.6.1(연습문제)
